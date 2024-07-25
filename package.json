@@ -1,0 +1,59 @@
+{
+  "name": "comfy-client",
+  "version": "0.2.0",
+  "repository": "https://github.com/ChenshouLiang/ComfyProcess.git",
+  "author": "chenshouliang <m17635645973@163.com>",
+  "license": "MIT",
+  "engines": {
+    "node": ">=18.0.0",
+    "yarn": "^1.22.19"
+  },
+  "keywords": [
+    "comfyui",
+    "comfy-ui-sdk",
+    "stable-diffusion",
+    "comfy-ui-api",
+    "sdxl",
+    "sd1.5"
+  ],
+  "main": "dist/index.js",
+  "module": "dist/index.mjs",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "require": "./dist/index.js",
+      "import": "./dist/index.mjs",
+      "types": "./dist/index.d.ts"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "lint": "eslint .",
+    "test": "jest",
+    "dev": "npm run build --watch",
+    "build": "tsup src/index.js --dts --format cjs,esm",
+    "prettier": "prettier --config .prettierrc --write ./src"
+  },
+  "dependencies": {
+    "path-browserify": "^1.0.1",
+    "pino": "^9.3.1",
+    "uuid": "^10.0.0",
+    "ws": "^8.18.0"
+  },
+  "devDependencies": {
+    "@babel/core": "^7.24.9",
+    "@babel/preset-env": "^7.24.8",
+    "@types/node": "^18.11.14",
+    "@types/ws": "^8.5.5",
+    "@typescript-eslint/eslint-plugin": "^5.61.0",
+    "@typescript-eslint/parser": "^5.61.0",
+    "babel-jest": "^29.7.0",
+    "eslint": "^9.7.0",
+    "esm": "^3.2.25",
+    "jest": "^29.7.0",
+    "tsup": "^8.2.1",
+    "typescript": "^5.5.3"
+  }
+}
