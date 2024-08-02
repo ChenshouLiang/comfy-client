@@ -1,27 +1,62 @@
 export class ComfyUIWeb {
   constructor(serverAddress) {
-    this.serverAddress = serverAddress;
+    if (ComfyUIWeb.instance) {
+      return ComfyUIWeb.instance;
+    }
+    this.serverAddress = serverAddress
+    this.address = null;
+    ComfyUIWeb.instance = this;
+  }
+
+  async getAddress() {
+    if (!this.address) {
+      if (Array.isArray(this.serverAddress)) {
+        const addressArray = [];
+        // 并行获取所有地址的 exec_info
+        const execInfoPromises = this.serverAddress.map(address => this.getPrompt(address));
+        const settledPromises = await Promise.allSettled(execInfoPromises);
+        const resolvedPromises = settledPromises.filter(p => p.status === 'fulfilled');
+        resolvedPromises.forEach(({ value }, index) => {
+          addressArray.push({ address: this.serverAddress[index], exec_info: value.exec_info.queue_remaining });
+        });
+
+        if (addressArray.length === 0) {
+          throw new Error('没有找到有效的地址');
+        }
+        const result = addressArray.reduce((min, current) => current.exec_info < min.exec_info ? current : min);
+        this.address = result.address;
+      } else {
+        this.address = this.serverAddress;
+      }
+    }
+    return this.address;
   }
 
   async uploadImage(image, filename, overwrite) {
     const formData = new FormData();
     formData.append('image', new Blob([image]), filename);
     if (overwrite !== undefined) {
-      formData.append('overwrite', overwrite.toString());
+      formData.append('subfolder', overwrite.toString());
     }
-    const res = await fetch(`${this.serverAddress}/upload/image`, {
-      method: 'POST',
-      body: formData,
-    });
-    const json = await res.json();
-    if ('error' in json) {
-      throw new Error(JSON.stringify(json));
+    let url = await this.getAddress()
+    try {
+      const res = await fetch(`${url}/upload/image`, {
+        method: 'POST',
+        body: formData,
+      });
+      const json = await res.json();
+      if ('error' in json) {
+        throw new Error(JSON.stringify(json));
+      }
+      return json;
+    } catch (error) {
+      throw new Error('上传图片时出错：' + error.message);
     }
-    return json;
   }
 
   async getEmbeddings() {
-    const res = await fetch(`${this.serverAddress}/embeddings`);
+    let url = await this.getAddress()
+    const res = await fetch(`${url}/embeddings`);
     const json = await res.json();
     if ('error' in json) {
       throw new Error(JSON.stringify(json));
@@ -30,7 +65,8 @@ export class ComfyUIWeb {
   }
 
   async queuePrompt(prompt) {
-    const res = await fetch(`${this.serverAddress}/prompt`, {
+    let url = await this.getAddress()
+    const res = await fetch(`${url}/prompt`, {
       method: 'POST',
       headers: {
         Accept: 'application/json',
@@ -49,7 +85,8 @@ export class ComfyUIWeb {
   }
 
   async interrupt() {
-    const res = await fetch(`${this.serverAddress}/interrupt`, {
+    let url = await this.getAddress()
+    const res = await fetch(`${url}/interrupt`, {
       method: 'POST',
       headers: {
         Accept: 'application/json',
@@ -63,7 +100,8 @@ export class ComfyUIWeb {
   }
 
   async editHistory(params) {
-    const res = await fetch(`${this.serverAddress}/history`, {
+    let url = await this.getAddress()
+    const res = await fetch(`${url}/history`, {
       method: 'POST',
       headers: {
         Accept: 'application/json',
@@ -80,7 +118,8 @@ export class ComfyUIWeb {
   }
 
   async getImage(filename, subfolder, type) {
-    const res = await fetch(`${this.serverAddress}/view?` + new URLSearchParams({
+    let url = await this.getAddress()
+    const res = await fetch(`${url}/view?` + new URLSearchParams({
       filename,
       subfolder,
       type
@@ -91,8 +130,9 @@ export class ComfyUIWeb {
   }
 
   async viewMetadata(folderName, filename) {
+    let url = await this.getAddress()
     const res = await fetch(
-      `${this.serverAddress}/view_metadata/${folderName}?filename=${filename}`,
+      `${url}/view_metadata/${folderName}?filename=${filename}`,
     );
     const json = await res.json();
     if ('error' in json) {
@@ -102,7 +142,8 @@ export class ComfyUIWeb {
   }
 
   async getSystemStats() {
-    const res = await fetch(`${this.serverAddress}/system_stats`);
+    let url = await this.getAddress()
+    const res = await fetch(`${url}/system_stats`);
     const json = await res.json();
     if ('error' in json) {
       throw new Error(JSON.stringify(json));
@@ -110,8 +151,8 @@ export class ComfyUIWeb {
     return json;
   }
 
-  async getPrompt() {
-    const res = await fetch(`${this.serverAddress}/prompt`);
+  async getPrompt(url) {
+    const res = await fetch(`${url}/prompt`);
     const json = await res.json();
     if ('error' in json) {
       throw new Error(JSON.stringify(json));
@@ -120,7 +161,8 @@ export class ComfyUIWeb {
   }
 
   async getObjectInfo(nodeClass) {
-    const res = await fetch(`${this.serverAddress}/object_info` + (nodeClass ? `/${nodeClass}` : ''));
+    let url = await this.getAddress()
+    const res = await fetch(`${url}/object_info` + (nodeClass ? `/${nodeClass}` : ''));
     const json = await res.json();
     if ('error' in json) {
       throw new Error(JSON.stringify(json));
@@ -129,8 +171,9 @@ export class ComfyUIWeb {
   }
 
   async getHistory(promptId) {
+    let url = await this.getAddress()
     const res = await fetch(
-      `${this.serverAddress}/history` + (promptId ? `/${promptId}` : ''),
+      `${url}/history` + (promptId ? `/${promptId}` : ''),
     );
     const json = await res.json();
     if ('error' in json) {
@@ -140,7 +183,8 @@ export class ComfyUIWeb {
   }
 
   async getQueue() {
-    const res = await fetch(`${this.serverAddress}/queue`);
+    let url = await this.getAddress()
+    const res = await fetch(`${url}/queue`);
     const json = await res.json();
     if ('error' in json) {
       throw new Error(JSON.stringify(json));
@@ -183,7 +227,7 @@ export class ComfyUIWeb {
       if (payload.hasOwnProperty(keys)) {
         if (keys === 'image') {
           let updatedObjectImage = {}
-          Promise.all(payload[key].map(async (obj) => {
+          Promise.all(payload[keys].map(async (obj) => {
             let imgs = await this.uploadImage(obj.file, '')
             updatedObjectImage = { image: imgs.filename }
             if (workflow.hasOwnProperty(obj.id)) {
@@ -240,6 +284,7 @@ export class ComfyUIWeb {
   }
 
   async genWithWorkflow(prompt) {
+    let url = await this.getAddress()
     const queue = await this.queuePrompt(prompt);
     const promptId = queue.prompt_id;
     return new Promise(async (resolve, reject) => {
@@ -267,7 +312,7 @@ export class ComfyUIWeb {
             // 用于存放图片
             const imagesOutput = []
             for (const item of nodeOutput.images) {
-              const imageUrl = `${this.serverAddress}/view?subfolder=${item.subfolder}&type=${item.type}&filename=${item.filename}`
+              const imageUrl = `${url}/view?subfolder=${item.subfolder}&type=${item.type}&filename=${item.filename}`
               imagesOutput.push(imageUrl);
             }
             outputImages[nodeId] = imagesOutput

@@ -1,10 +1,10 @@
 ## Install
 
-yarn add comfy-process
+yarn add comfy-client
 
 ```js
 // 启用 WebSocket-(node服务)
-import { ComfyUIClient } from 'comfy-process';
+import { ComfyUIClient } from 'comfy-client';
 import { v4 as uuidv4 } from 'uuid';
 const serverAddress = '127.0.0.1:8189';
 const clientId = uuidv4();
@@ -22,12 +22,20 @@ await client.disconnect();
 
 ```js
 // web服务
-import { ComfyUIWeb } from 'comfy-process';
+import { ComfyUIWeb } from 'comfy-client';
+// 传输多个地址会寻找占用资源少的推送队列
+const url = 'http://127.0.0.1:8189' & ['http://127.0.0.1:8189','http://127.0.0.1:8188']
 const client = new ComfyUIWeb('http://127.0.0.1:8189');
 // 将url转Blob
 await client.urlToBlob(url);
-// 传值 (图片图片名称)
+// 上传图片-传值 (图片图片名称)
 await client.uploadImage(image, filename);
+// 获取当前队列排队情况
+await client.getPrompt();
+// 获取历史记录 -- promptId,传入promptId,查询指定历史记录
+await client.getHistory()
+// 获取当前设备的自定义节点信息
+await client.getObjectInfo()
 // 数据合并(数据，规则)
 let payload = {
   positive: ' 1 girl',
@@ -241,4 +249,18 @@ let feature = {
 };
 const prompt = await client.updateObject(payload, feature);
 const images = await client.getImages(prompt);
+
+// 图片上传
+client.uploadImage(file, file.name,'WEB-SD').then(res => {
+  return url = res.subfolder === ''? res.name : res.subfolder + '/' + res.name
+})
+```
+
+``` js
+// dify
+import { DifyAPI } from 'comfy-client';
+const client = new DifyAPI('http://127.0.0.1:8189');
+// 发送对话消息
+await client.chatMessages();
+
 ```
