@@ -12,12 +12,12 @@ export class ComfyUIWeb {
     if (!this.address) {
       if (Array.isArray(this.serverAddress)) {
         const addressArray = [];
-        // 并行获取所有地址的 exec_info
         const execInfoPromises = this.serverAddress.map(address => this.getPrompt(address));
         const settledPromises = await Promise.allSettled(execInfoPromises);
-        const resolvedPromises = settledPromises.filter(p => p.status === 'fulfilled');
-        resolvedPromises.forEach(({ value }, index) => {
-          addressArray.push({ address: this.serverAddress[index], exec_info: value.exec_info.queue_remaining });
+        settledPromises.forEach(({ status, value }, index) => {
+          if (status === 'fulfilled') {
+            addressArray.push({ address: this.serverAddress[index], exec_info: value.exec_info.queue_remaining });
+          }
         });
 
         if (addressArray.length === 0) {
