@@ -32,9 +32,9 @@ export class ComfyUIWeb {
     return this.address;
   }
 
-  async uploadImage(image, filename, overwrite) {
+  async uploadImage(image, overwrite) {
     const formData = new FormData();
-    formData.append('image', new Blob([image]), filename);
+    formData.append('image', image);
     if (overwrite !== undefined) {
       formData.append('subfolder', overwrite.toString());
     }
@@ -64,7 +64,8 @@ export class ComfyUIWeb {
     return json;
   }
 
-  async queuePrompt(prompt) {
+  async queuePrompt(workflow) {
+    console.log('workflow', workflow)
     let url = await this.getAddress()
     const res = await fetch(`${url}/prompt`, {
       method: 'POST',
@@ -73,9 +74,8 @@ export class ComfyUIWeb {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        prompt,
-        client_id: this.clientId,
-      }),
+        prompt: workflow
+      })
     });
     const json = await res.json();
     if ('error' in json) {
@@ -219,71 +219,72 @@ export class ComfyUIWeb {
 
   // 查找节点然后覆盖数据
   async updateObject(payload, feature) {
-    const { input, workflow } = feature
-    Object.keys(input).map(keys => {
-      let idKey = input[keys].id
-      let updatedObject = {}
-      // 判断有没有值
+    const { input, workflow } = feature;
+    await Promise.all(Object.keys(input).map(async (keys) => {
+      let idKey = input[keys].id;
+      let updatedObject = {};
       if (payload.hasOwnProperty(keys)) {
-        if (keys === 'image') {
-          let updatedObjectImage = {}
-          Promise.all(payload[keys].map(async (obj) => {
-            let imgs = await this.uploadImage(obj.file, '')
-            updatedObjectImage = { image: imgs.filename }
+        console.log('keys', keys);
+        if (keys === 'images') {
+          let updatedObjectImage = {};
+          await Promise.all(payload[keys].map(async (obj) => {
+            let imgs = await this.uploadImage(obj.file, '');
+            updatedObjectImage = { image: imgs.name };
             if (workflow.hasOwnProperty(obj.id)) {
-              workflow[obj.id].inputs = { ...workflow[obj.id].inputs, ...updatedObjectImage }
+              workflow[obj.id].inputs = { ...workflow[obj.id].inputs, ...updatedObjectImage };
             }
-          }))
+          }));
         } else if (keys === 'style') {
-          let { checkpoints, loras, samplers } = payload[keys]
-          let updatedObjectStyle = {}
+          let { checkpoints, loras, samplers } = payload[keys];
+          let updatedObjectStyle = {};
           if (checkpoints.length > 0) {
-            checkpoints.forEach(v => {
-              updatedObjectStyle = { ckpt_name: v.ckpt_name }
+            checkpoints.forEach((v) => {
+              updatedObjectStyle = { ckpt_name: v.ckpt_name };
               if (workflow.hasOwnProperty(v.id)) {
-                workflow[v.id].inputs = { ...workflow[v.id].inputs, ...updatedObjectStyle }
+                workflow[v.id].inputs = { ...workflow[v.id].inputs, ...updatedObjectStyle };
               }
             });
           }
           if (samplers.length > 0) {
-            samplers.forEach(v => {
+            samplers.forEach((v) => {
               updatedObjectStyle = {
                 cfg: v.cfg,
                 steps: v.steps,
                 sampler_name: v.sampler_name,
-                scheduler: v.scheduler
-              }
+                scheduler: v.scheduler,
+              };
               if (workflow.hasOwnProperty(v.id)) {
-                workflow[v.id].inputs = { ...workflow[v.id].inputs, ...updatedObjectStyle }
+                workflow[v.id].inputs = { ...workflow[v.id].inputs, ...updatedObjectStyle };
               }
-            })
+            });
           }
           if (loras.length > 0) {
-            loras.forEach(v => {
+            loras.forEach((v) => {
               updatedObjectStyle = {
                 lora_name: v.lora_name,
-                strength_model: v.strength_model
-              }
+                strength_model: v.strength_model,
+              };
               if (workflow.hasOwnProperty(v.id)) {
-                workflow[v.id].inputs = { ...workflow[v.id].inputs, ...updatedObjectStyle }
+                workflow[v.id].inputs = { ...workflow[v.id].inputs, ...updatedObjectStyle };
               }
             });
           }
         } else if (keys === 'outPainting') {
-          updatedObject = payload[keys]
-          console.log('updatedObject', updatedObject)
+          updatedObject = payload[keys];
+          console.log('updatedObject', updatedObject);
         } else {
-          updatedObject = { [input[keys].key]: payload[keys] }
+          updatedObject = { [input[keys].key]: payload[keys] };
         }
       }
       if (workflow.hasOwnProperty(idKey)) {
-        workflow[idKey].inputs = { ...workflow[idKey].inputs, ...updatedObject }
+        workflow[idKey].inputs = { ...workflow[idKey].inputs, ...updatedObject };
       }
-    });
-    return workflow
+    }));
+    return workflow;
   }
 
   async genWithWorkflow(prompt) {
+    console.log('prompt2', prompt)
     let url = await this.getAddress()
     const queue = await this.queuePrompt(prompt);
     const promptId = queue.prompt_id;
