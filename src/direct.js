@@ -65,7 +65,6 @@ export class ComfyUIWeb {
   }
 
   async queuePrompt(workflow) {
-    console.log('workflow', workflow)
     let url = await this.getAddress()
     const res = await fetch(`${url}/prompt`, {
       method: 'POST',
@@ -224,12 +223,18 @@ export class ComfyUIWeb {
       let idKey = input[keys].id;
       let updatedObject = {};
       if (payload.hasOwnProperty(keys)) {
-        console.log('keys', keys);
         if (keys === 'images') {
           let updatedObjectImage = {};
           await Promise.all(payload[keys].map(async (obj) => {
-            let imgs = await this.uploadImage(obj.file, '');
-            updatedObjectImage = { image: imgs.name };
+            // 判断是否是数据流图片
+            if (obj.hasOwnProperty('file')) {
+              let imgs = await this.uploadImage(obj.file, '');
+              updatedObjectImage = { image: imgs.name };
+            }
+            // 判断是否是url图片
+            if (obj.hasOwnProperty('url')) {
+              updatedObjectImage = { url: obj.url };
+            }
             if (workflow.hasOwnProperty(obj.id)) {
               workflow[obj.id].inputs = { ...workflow[obj.id].inputs, ...updatedObjectImage };
             }
@@ -271,7 +276,6 @@ export class ComfyUIWeb {
           }
         } else if (keys === 'outPainting') {
           updatedObject = payload[keys];
-          console.log('updatedObject', updatedObject);
         } else {
           updatedObject = { [input[keys].key]: payload[keys] };
         }
@@ -284,7 +288,6 @@ export class ComfyUIWeb {
   }
 
   async genWithWorkflow(prompt) {
-    console.log('prompt2', prompt)
     let url = await this.getAddress()
     const queue = await this.queuePrompt(prompt);
     const promptId = queue.prompt_id;
