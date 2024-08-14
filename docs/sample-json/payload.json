@@ -26,5 +26,9 @@
         "strength_model": 1
       }
     ]
+  },
+  "size": {
+    "width": 256,
+    "height": 256
   }
 }

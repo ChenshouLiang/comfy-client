@@ -66,6 +66,7 @@ export class ComfyUIWeb {
 
   async queuePrompt(workflow) {
     let url = await this.getAddress()
+    console.log('占用少的地址', url)
     const res = await fetch(`${url}/prompt`, {
       method: 'POST',
       headers: {
@@ -151,6 +152,7 @@ export class ComfyUIWeb {
   }
 
   async getPrompt(url) {
+    console.log('获取占用情况地址', url)
     const res = await fetch(`${url}/prompt`);
     const json = await res.json();
     if ('error' in json) {
@@ -276,6 +278,13 @@ export class ComfyUIWeb {
           }
         } else if (keys === 'outPainting') {
           updatedObject = payload[keys];
+        } else if (keys === 'size') {
+          Object.keys(input[keys]).forEach(key => {
+            updatedObject = { [key]: payload[keys][key] };
+            if (workflow.hasOwnProperty(input[keys][key].id)) {
+              workflow[input[keys][key].id].inputs = { ...workflow[input[keys][key].id].inputs, ...updatedObject }
+            }
+          });
         } else {
           updatedObject = { [input[keys].key]: payload[keys] };
         }
@@ -327,5 +336,14 @@ export class ComfyUIWeb {
         return reject(err);
       }
     })
+  }
+
+  async destroy() {
+    if (this.address) {
+      this.address = null;
+    }
+    if (ComfyUIWeb.instance) {
+      ComfyUIWeb.instance = null;
+    }
   }
 }

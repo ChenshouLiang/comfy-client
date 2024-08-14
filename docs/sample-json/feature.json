@@ -30,6 +30,16 @@
       "right": 100,
       "feathering": 50
     },
+    "size": {
+      "height":{
+        "id": "14",
+        "key":"height"
+      },
+      "width": {
+        "id": "14",
+        "key":"width"
+      }
+    },
     "images": [
       {
         "id": "11",
