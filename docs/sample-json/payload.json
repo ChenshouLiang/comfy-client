@@ -5,7 +5,8 @@
   "images": [
     {
       "id": "12",
-      "file": "file"
+      "file": "file",
+      "url":""
     }
   ],
   "style": {

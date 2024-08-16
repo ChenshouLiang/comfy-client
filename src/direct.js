@@ -91,12 +91,8 @@ export class ComfyUIWeb {
       headers: {
         Accept: 'application/json',
         'Content-Type': 'application/json',
-      },
+      }
     });
-    const json = await res.json();
-    if ('error' in json) {
-      throw new Error(JSON.stringify(json));
-    }
   }
 
   async editHistory(params) {
@@ -153,6 +149,16 @@ export class ComfyUIWeb {
 
   async getPrompt(url) {
     console.log('获取占用情况地址', url)
+    const res = await fetch(`${url}/prompt`);
+    const json = await res.json();
+    if ('error' in json) {
+      throw new Error(JSON.stringify(json));
+    }
+    return json;
+  }
+
+  async getPrompts() {
+    let url = await this.getAddress()
     const res = await fetch(`${url}/prompt`);
     const json = await res.json();
     if ('error' in json) {
