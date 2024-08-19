@@ -8,20 +8,25 @@ export class ComfyUIWeb {
     ComfyUIWeb.instance = this;
   }
 
-  async getAddress() {
+  async getAddress(callback) {
     if (!this.address) {
       if (Array.isArray(this.serverAddress)) {
         const addressArray = [];
+        const errorAddresses = []; // 存储异常地址
         const execInfoPromises = this.serverAddress.map(address => this.getPrompt(address));
         const settledPromises = await Promise.allSettled(execInfoPromises);
         settledPromises.forEach(({ status, value }, index) => {
           if (status === 'fulfilled') {
             addressArray.push({ address: this.serverAddress[index], exec_info: value.exec_info.queue_remaining });
+          } else if (status === 'rejected') {
+            errorAddresses.push(this.serverAddress[index])
           }
         });
-
         if (addressArray.length === 0) {
           throw new Error('没有找到有效的地址');
+        }
+        if (callback) {
+          callback({ 'errorAddresses': errorAddresses, msg: '异常服务器地址' })
         }
         const result = addressArray.reduce((min, current) => current.exec_info < min.exec_info ? current : min);
         this.address = result.address;
@@ -91,8 +96,9 @@ export class ComfyUIWeb {
       headers: {
         Accept: 'application/json',
         'Content-Type': 'application/json',
-      }
+      },
     });
+    const json = await res;
   }
 
   async editHistory(params) {
@@ -302,8 +308,12 @@ export class ComfyUIWeb {
     return workflow;
   }
 
-  async genWithWorkflow(prompt) {
-    let url = await this.getAddress()
+  async genWithWorkflow(prompt, callback) {
+    let url = await this.getAddress((err) => {
+      if (callback) {
+        callback(err)
+      }
+    })
     const queue = await this.queuePrompt(prompt);
     const promptId = queue.prompt_id;
     return new Promise(async (resolve, reject) => {
@@ -335,11 +345,17 @@ export class ComfyUIWeb {
               imagesOutput.push(imageUrl);
             }
             outputImages[nodeId] = imagesOutput
+          } else {
+            outputImages[nodeId] = [];
           }
         }
         return resolve(outputImages);
       } catch (err) {
-        return reject(err);
+        if (callback) {
+          callback({ error: err.message, msg: '生成图片时出错' })
+        } else {
+          return reject(err);
+        }
       }
     })
   }
